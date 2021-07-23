@@ -1,12 +1,20 @@
 import React from "react";
 
+import axios from "axios";
+
 import { Route, Link, Switch, Redirect } from 'react-router-dom'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 //importing components
 import Home from './Home';
 import PizzaForm from "./PizzaForm";
+
+import schema from './formSchema'
+
+import { reach } from 'yup'
+
+
 
 //setting initial form values
 const initialFormValues = {
@@ -35,18 +43,35 @@ const App = () => {
   const [formErrors, setFormErrors] = useState(initialFormErrors); //object
   const [disabled, setDisabled] = useState(initialDisabled); //boolean
 
+  const postNewOrder = newOrder => {   
+    axios.post('https://reqres.in/api/orders', newOrder)
+    .then(res => {
+    const orderFromBackend = res.data
+    setOrder([orderFromBackend, ...order])
+    console.log(res.data)
+    })
+    .catch(err => {
+      console.log(err)
+    })
+    .finally(() => {
+      setFormValues(initialFormValues)
+    })
+  }
+
+  const validate = (name, value) => {
+    reach(schema, name)
+      .validate(value)
+      .then(() => setFormErrors({...formErrors, [name]: ''}))
+      .catch(err => setFormErrors({...formErrors, [name]: err.errors[0]}))
+  }
+
   const updateForm = (inputName, inputValue) => {
-    // 🔥 STEP 8 - IMPLEMENT a "form state updater" which will be used inside the inputs' `onChange` handler
-    //  It takes in the name of an input and its value, and updates `formValues`
+    validate(inputName, inputValue)
     setFormValues({ ...formValues, [inputName]: inputValue })
   }
 
   const submitForm = () => {
-    // 🔥 STEP 9 - IMPLEMENT a submit function which will be used inside the form's own `onSubmit`
-    //  a) make a new friend object, trimming whitespace from username and email
-    //  b) prevent further action if either username or email or role is empty string after trimming
-    //  c) POST new friend to backend, and on success update the list of friends in state with the new friend from API
-    //  d) also on success clear the form
+
     const newOrder = {
       name: formValues.name.trim(),
       size: formValues.size.trim(),
@@ -54,18 +79,14 @@ const App = () => {
       pepperoni: formValues.pepperoni,
       pineapple: formValues.pineapple,
       mushrooms: formValues.mushrooms,
-      specialText: formValues.specialText.trim()
+      specialText: formValues.specialText,
     }
-    if (!newOrder.name || !newOrder.size ) return
-
-    // axios.post('https://reqres.in/api/orders', newOrder)
-    //   .then(res => {
-    //     const friendFromBackend = res.data
-    //     setFriends([friendFromBackend, ...friends])
-    //     setFormValues(initialFormValues)
-    //   })
-
+    postNewOrder(newOrder);
   }
+
+  useEffect(() => {
+    schema.isValid(formValues).then(valid => setDisabled(!valid))
+  }, [formValues])
 
 
   return (
